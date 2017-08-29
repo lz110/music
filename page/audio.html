@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Music Player</title>
+    <link rel="stylesheet" href="../css/font-awesome.css" />
+    <style>
+        body,div,p,ul,li{margin:0;padding:0;font-family: 等线;}
+        html,body{height:100%;}
+        #box{width:100%;height:100%;border:3px double;overflow: hidden;text-align: center;
+            padding-top: 250px;box-sizing: border-box;position: relative;float: right;}
+        p{font-size: 20px;margin-bottom: 30px;color: #fff;letter-spacing: 5px;transition: all 600ms;}
+        p.selected{font-size:28px;color:red;text-shadow: 2px 2px 6px #fff;font-weight: bold;}
+        nav{position: absolute;top:10px;right:100px;padding-left: 10px;background: rgba(255,255,255,0.5);border-radius: 20px;}
+        nav>*{margin-right: 15px;cursor: pointer;width:18px;height:18px;vertical-align: middle;}
+        #photo{width:250px;height:250px;position: absolute;border: 30px solid;box-sizing: border-box;
+                    top:100px;right:80px;border-radius: 50%;
+                    box-shadow: 0 0 1px 2px grey,0 0 1px 5px #000,0 0 1px 6px grey,0 0 1px 9px #000,
+                    0 0 1px 10px grey,0 0 1px 13px #000,0 0 1px 15px grey,0 0 1px 17px #000;}
+        .play{animation: round 20s linear infinite;animation-play-state: play!important;}
+        .pause{animation: round 20s linear infinite;animation-play-state: paused!important;}
+        /*让圆盘转圈从0到100*/
+        @keyframes round{
+            0%{transform:rotate(0deg);}
+            100%{transform:rotate(360deg);}
+        }
+        #menu{position: absolute;
+				left: 0;
+				border: 5px solid black;
+				background:#f1f5f5;
+				height: 98%;
+				}
+        #menu>ul{list-style: none;color:#fff;padding:10px;}
+        #menu li{border-bottom: 1px solid grey;padding-bottom: 5px;padding-top: 10px;cursor: pointer;}
+        /*控制悬浮显示渐变色*/
+        .g:hover{background:linear-gradient(to right bottom,#fff 40%,#333);}
+        body>details li{
+				cursor: pointer;
+				padding: 10px  20px;
+				background: #F1F5F5;
+				color: #000;
+				border-radius: 5px;
+				margin: 10px 0;
+				font-size: 12px;
+			}
+        /*#leftHand,#rightHand{position: absolute;width:64px;height:64px;transform: rotate(180deg);transition: transform 1s;}
+        #leftHand{background: url(../media/hand.png);bottom:50%;left:17%;transform: rotateY(180deg) rotateZ(280deg);}
+        #rightHand{background: url(../media/hand.png);bottom:50%;left:10%;transform: rotate(280deg);}*/
+    </style>
+</head>
+<body ng-app="myapp">
+    <audio  id="mp3"></audio>
+    <div id="box">
+        <div id="container">
+        </div>
+        <nav>
+            <i class="fa fa-play" id="play"></i>
+            <i class="fa fa-fast-backward" id="fastBackward"></i>
+            <i class="fa fa-fast-forward" id="fastForward"></i>
+            <img src="../media/mute.png" id="mute">
+            <img src="../media/small.png" id="small">
+            <img src="../media/big.png" id="big">
+        </nav>
+        <img src="../media/photo.jpg" id="photo" class="pause">
+    </div>
+    <details id="menu" ng-controller="myctrl">
+    	<summary></summary>
+        <ul>
+        	<li><img src="../media/1.png"/></li>
+            <li ng-repeat="m in items" ng-click="selectSong($index)" class="g">
+                {{m.title}}&nbsp;&nbsp;[{{m.singer}}]
+            </li>
+        </ul>
+    </details>
+    <!--<div id="leftHand"></div>
+    <div id="rightHand"></div>-->
+</body>
+<script src="../js/data.js"></script>
+<script src="../js/jquery.js"></script>
+<script src="../js/angular1.5.8.js"></script>
+<script>
+    //初始化
+    var init=function(bg,logo,lrc,song){
+        $("#box").css({
+            background:"url("+bg+")",
+            backgroundSize:"100% 100%"
+        });//设置背景图片
+        $("#mp3").attr("src",song);//设置音乐文件
+        $("#photo").attr("src",logo);//设置碟片图片
+        $("#container").html(lrc);//设置歌词
+    }
+
+    angular.module("myapp",[]).controller("myctrl",function($scope){
+        $scope.items=mp3Array;
+        $scope.selectSong=function(index){
+            var first=mp3Array[index];
+            init(first.bg,first.logo,first.lrc,first.audio);//播放指定下标的歌曲,以及海报，LOGO
+            stop();//切换歌曲时，全部停止
+            pList=$("p");//没换一次歌,pList数组应该重新获取新的歌词，否则仍然还是第一首歌的内容
+        }
+    })
+
+    var first=mp3Array[0];
+    init(first.bg,first.logo,first.lrc,first.audio);
+
+
+    //1.唱到哪一句，哪一句变红色
+    var mp3=document.getElementById("mp3");
+    var pList=$("p");
+    //只要在播放,这个事件就会不停的触发
+    mp3.ontimeupdate=function(){
+        var time=parseInt(this.currentTime);//获取当前audio的播放时间
+        pList.each(function(index,p){
+            var b=parseInt($(p).attr("timeline"));
+            if(time==b){
+                $(p).addClass("selected").siblings().removeClass("selected");
+                console.log(p);
+                //2.整体歌词移动
+                $("#container").animate({
+                    marginTop:index*-48
+                })
+            }
+        })
+    }
+
+    //开始与暂停
+    $("#play").click(function(){
+        if(mp3.paused){
+            //播放
+            $("#mp3")[0].play();
+            $(this).removeClass("fa-play").addClass("fa-pause");
+            $("#photo").addClass("play").removeClass("pause");
+//          $("#rightHand").css({
+//              transform:"rotate(180deg)"
+//          })
+//          $("#leftHand").css({
+//              transform:"rotateZ(180deg) rotateY(180deg)"
+//          })
+        }else{
+            //暂停
+            $("#mp3")[0].pause();
+            $("#photo").addClass("pause").removeClass("play");
+            $(this).removeClass("fa-pause").addClass("fa-play");
+//          $("#rightHand").css({
+//              transform:"rotate(280deg)"
+//          })
+//          $("#leftHand").css({
+//              transform:"rotateY(180deg) rotateZ(280deg) "
+//          })
+        }
+    })
+
+
+    //加速
+    $("#fastForward").click(function(){
+        mp3.playbackRate+=0.2;
+    })
+
+    //减速
+    $("#fastBackward").click(function(){
+        mp3.playbackRate-=0.2;
+    })
+
+    //静音
+    $("#mute").click(function(){
+        mp3.muted=!mp3.muted;
+    })
+
+    //音量减小(0~1)
+    $("#small").click(function(){
+        if(mp3.volume>0)mp3.volume-=0.05;
+    })
+
+    //音量增大(0~1)
+    $("#big").click(function(){
+        if(mp3.volume<1) mp3.volume+=0.05;
+    })
+
+    //当音频播放完毕,LOGO自动停止旋转
+    mp3.onended=stop;
+    
+    function stop(){
+        //停止动画
+        $("#photo").removeClass("pause").removeClass("play");
+        //将播放按钮重置
+        $("#play").removeClass("fa-pause").addClass("fa-play");
+//      $("#rightHand").css({
+//              transform:"rotate(280deg)"
+//      })
+//      $("#leftHand").css({
+//          transform:"rotateY(180deg) rotateZ(280deg) "
+//      })
+    }
+</script>
+</html>
